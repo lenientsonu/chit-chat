@@ -2,27 +2,31 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { IoLogoGoogle, IoLogoFacebook } from "react-icons/io";
-import { toast } from "react-toastify";
-import { auth } from "@/firebase/firebase";
+
+import { auth, db } from "@/firebase/firebase";
 import {
-    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
     GoogleAuthProvider,
     FacebookAuthProvider,
     signInWithPopup,
-    sendPasswordResetEmail,
+    updateProfile,
 } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
 import { useAuth } from "@/context/authContext";
 import ToastMessage from "@/components/ToastMessage";
+import { profileColors } from "@/utils/constants";
 
 const gProvider = new GoogleAuthProvider();
 const fProvider = new FacebookAuthProvider();
 
-const Login = () => {
+const Register = () => {
     const router = useRouter();
     const { currentUser, isLoading } = useAuth();
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const colorIndex = Math.floor(Math.random() * profileColors.length);
 
     useEffect(() => {
         if (!isLoading && currentUser) {
@@ -34,16 +38,33 @@ const Login = () => {
     const submitHandler = async (event) => {
         event.preventDefault();
 
-        // console.log(email, password);
+        console.log(name, email, password);
 
         try {
-            const { user } = await signInWithEmailAndPassword(
+            const { user } = await createUserWithEmailAndPassword(
                 auth,
                 email,
                 password
             );
 
+            await updateProfile(user, {
+                displayName: name,
+            });
+
+            // creating user collection in firestore
+            await setDoc(doc(db, "users", user.uid), {
+                uid: user.uid,
+                name,
+                email,
+                password,
+                color: profileColors[colorIndex],
+            });
+
+            // creating user specific chat collection in firestore
+            await setDoc(doc(db, "userChats", user.uid), {});
+
             console.log(user);
+            router.push("/");
         } catch (error) {
             alert(error);
         }
@@ -65,34 +86,14 @@ const Login = () => {
         }
     };
 
-    const resetPassword = async () => {
-        try {
-            toast.promise(
-                async () => {
-                    // reset logic
-                    await sendPasswordResetEmail(auth, email);
-                },
-                {
-                    pending: "Generating reset link",
-                    success: "Reset link sent to your registered email id.",
-                    error: "You may have entered wrong email id!",
-                },
-                { autoClose: 5000 }
-            );
-        } catch (error) {
-            alert(error);
-        }
-    };
-
     return isLoading || (!isLoading && currentUser) ? (
         "Loader..."
     ) : (
         <div className='h-[100vh] flex justify-center items-center bg-c1'>
-            <ToastMessage />
             <div className='flex items-center flex-col'>
                 <div className='text-center'>
                     <div className='text-4xl font-bold'>
-                        Login to your Account
+                        Create your new Account
                     </div>
                     <div className='mt-3 text-c3'>
                         Connect and chat with anyone, anywhere
@@ -132,6 +133,13 @@ const Login = () => {
                     className='flex flex-col items-center gap-3 w-[500px] mt-5'
                 >
                     <input
+                        type='text'
+                        placeholder='Enter your Name'
+                        className='w-full h-14 bg-c5 rounded-xl outline-none border-none px-5 text-c3'
+                        autoComplete='off'
+                        onChange={(e) => setName(e.target.value)}
+                    />
+                    <input
                         type='email'
                         placeholder='Enter your Email'
                         className='w-full h-14 bg-c5 rounded-xl outline-none border-none px-5 text-c3'
@@ -145,25 +153,18 @@ const Login = () => {
                         autoComplete='off'
                         onChange={(e) => setPassword(e.target.value)}
                     />
-                    <div className='text-right w-full text-c3'>
-                        <span
-                            className='cursor-pointer'
-                            onClick={resetPassword}
-                        >
-                            Forgot Password?
-                        </span>
-                    </div>
+
                     <button className='mt-4 w-full h-14 rounded-xl outline-none text-base font-semibold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500'>
-                        Login to Your Account
+                        Register Your Account
                     </button>
                 </form>
                 <div className='flex justify-center gap-1 text-c3 mt-5'>
-                    <span>Not a member yet?</span>
+                    <span>Already have an account?</span>
                     <Link
-                        href='/register'
+                        href='/login'
                         className='font-semibold text-white underline underline-offset-2 cursor-pointer'
                     >
-                        Register Now!
+                        Login Now!
                     </Link>
                 </div>
             </div>
@@ -171,4 +172,4 @@ const Login = () => {
     );
 };
 
-export default Login;
+export default Register;
