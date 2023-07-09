@@ -16,6 +16,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/context/authContext";
 import ToastMessage from "@/components/ToastMessage";
 import { profileColors } from "@/utils/constants";
+import Loader from "@/components/Loader";
 
 const gProvider = new GoogleAuthProvider();
 const fProvider = new FacebookAuthProvider();
@@ -87,7 +88,7 @@ const Register = () => {
     };
 
     return isLoading || (!isLoading && currentUser) ? (
-        "Loader..."
+        <Loader />
     ) : (
         <div className='h-[100vh] flex justify-center items-center bg-c1'>
             <div className='flex items-center flex-col'>
